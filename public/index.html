@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ComfyUI + Gemini Studio</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <!-- Auth Overlay -->
+    <div id="auth-overlay"
+        style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 9999; display: flex; justify-content: center; align-items: center; flex-direction: column;">
+        <h2 style="color: white; margin-bottom: 20px;">🔐 Login Required</h2>
+        <input type="password" id="api-key-input" placeholder="Enter Access Key"
+            style="padding: 10px; width: 300px; border-radius: 5px; border: none; font-size: 16px;">
+        <button id="login-btn"
+            style="margin-top: 15px; padding: 10px 20px; background: #4CAF50; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px;">Enter
+            Studio</button>
+        <p id="auth-error" style="color: red; margin-top: 10px; display: none;">Invalid Key</p>
+    </div>
+
+    <div class="container">
+        <header style="display: flex; justify-content: space-between; align-items: center;">
+            <h1>🎨 ComfyUI + Gemini Studio</h1>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <a href="modern.html"
+                    style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 8px 16px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px; transition: transform 0.2s;"
+                    onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                    ✨ Try Modern UI
+                </a>
+                <button id="logout-btn"
+                    style="background: none; border: 1px solid #666; padding: 5px 10px; cursor: pointer; border-radius: 4px; font-size: 14px;">Logout
+                    🔓</button>
+            </div>
+            <div class="status" id="status">
+                <span class="dot"></span>
+                <span id="status-text">Connecting...</span>
+            </div>
+        </header>
+
+        <nav class="tabs">
+            <button class="tab active" data-tab="chat">💬 Gemini Chat</button>
+            <button class="tab" data-tab="generate">🖼️ Generate Images</button>
+        </nav>
+
+        <main>
+            <!-- Gemini Chat Tab -->
+            <div class="tab-content active" id="chat-tab">
+                <div class="chat-container">
+                    <div class="model-selector">
+                        <label for="model-select">Model:</label>
+                        <select id="model-select">
+                            <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash (Experimental)</option>
+                            <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                            <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+                            <option value="gemini-3-pro-preview">Gemini 3 Pro (Preview)</option>
+                        </select>
+                    </div>
+
+                    <div class="chat-history" id="chat-history">
+                        <div class="welcome-message">
+                            👋 Start chatting with Gemini! Ask for help creating prompts or test the model.
+                        </div>
+                    </div>
+
+                    <div class="chat-input-area">
+                        <textarea id="chat-input" placeholder="Ask Gemini to help you create a prompt..."
+                            rows="3"></textarea>
+                        <div class="chat-actions">
+                            <button id="clear-chat-btn" class="secondary-btn">Clear</button>
+                            <button id="send-chat-btn">Send</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Generate Images Tab -->
+            <div class="tab-content" id="generate-tab">
+                <div class="prompt-section">
+                    <div class="options" style="margin-bottom: 15px;">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="use-dual-prompts">
+                            <span>🎨 Use Dual Prompts (for workflow with 2 stages)</span>
+                        </label>
+                    </div>
+
+                    <!-- Single Prompt Mode -->
+                    <div id="single-prompt-mode">
+                        <label for="prompt">Enter your prompt:</label>
+                        <textarea id="prompt"
+                            placeholder="photo of a woman, confident face, athletic body, natural sunlight, cinematic photography..."
+                            rows="6"></textarea>
+
+                        <div class="options">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="use-gemini" checked>
+                                <span>✨ Enhance with Gemini AI</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Dual Prompt Mode -->
+                    <div id="dual-prompt-mode" style="display: none;">
+                        <label for="prompt1">Prompt 1 (Node 45):</label>
+                        <textarea id="prompt1" placeholder="First stage prompt..." rows="4"></textarea>
+
+                        <label for="prompt2" style="margin-top: 15px;">Prompt 2 (Node 83):</label>
+                        <textarea id="prompt2" placeholder="Second stage prompt..." rows="4"></textarea>
+                    </div>
+
+                    <button id="generate-btn" disabled>
+                        <span class="btn-text">Generate Image</span>
+                        <span class="loader" style="display: none;"></span>
+                    </button>
+                </div>
+
+                <div class="enhanced-section" id="enhanced-section" style="display: none;">
+                    <h3>Enhanced Prompt:</h3>
+                    <div class="enhanced-prompt" id="enhanced-prompt"></div>
+                </div>
+
+                <div class="result-section" id="result-section" style="display: none;">
+                    <h2>Result</h2>
+                    <div class="message" id="result-message"></div>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <p>Powered by ComfyUI SDK & Google Gemini API</p>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>

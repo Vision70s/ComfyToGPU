@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Edit Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+
+        .container {
+            border: 2px solid #ddd;
+            padding: 20px;
+            border-radius: 8px;
+        }
+
+        input,
+        textarea,
+        button {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            font-size: 16px;
+        }
+
+        textarea {
+            min-height: 80px;
+        }
+
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        button:hover {
+            background: #0056b3;
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        #preview {
+            max-width: 100%;
+            margin-top: 10px;
+            border: 1px solid #ddd;
+        }
+
+        #result {
+            margin-top: 20px;
+            padding: 10px;
+            background: #f0f0f0;
+            border-radius: 4px;
+            display: none;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #007bff;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .result-image {
+            max-width: 100%;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Auth Overlay -->
+    <div id="auth-overlay"
+        style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 9999; display: flex; justify-content: center; align-items: center; flex-direction: column;">
+        <h2 style="color: white; margin-bottom: 20px;">🔐 Login Required</h2>
+        <input type="password" id="api-key-input" placeholder="Enter Access Key"
+            style="padding: 10px; width: 300px; border-radius: 5px; border: none; font-size: 16px;">
+        <button id="login-btn"
+            style="margin-top: 15px; padding: 10px 20px; background: #4CAF50; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px;">Enter
+            Studio</button>
+        <p id="auth-error" style="color: red; margin-top: 10px; display: none;">Invalid Key</p>
+    </div>
+
+    <div class="container">
+        <header style="display: flex; justify-content: space-between; align-items: center;">
+            <h1>🎨 Image Editing Test</h1>
+            <button id="logout-btn"
+                style="background: none; border: 1px solid #666; padding: 5px 10px; cursor: pointer; border-radius: 4px; font-size: 14px;">Logout
+                🔓</button>
+        </header>
+
+        <label for="imageInput">1. Select an image:</label>
+        <input type="file" id="imageInput" accept="image/*">
+
+        <img id="preview" style="display:none;">
+
+        <label for="promptInput">2. Enter editing prompt:</label>
+        <textarea id="promptInput" placeholder="Example: Replace the cat with a dalmatian"></textarea>
+
+        <button id="generateBtn" disabled>Generate Edited Image</button>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Processing... This may take 1-2 minutes for first generation (model loading + image gen)</p>
+            <p style="font-size: 14px; color: #666;">Subsequent generations: ~30-60 seconds (optimized with 6 steps)</p>
+        </div>
+
+        <div id="result"></div>
+    </div>
+
+    <script>
+        // Auth Logic
+        let apiKey = localStorage.getItem('comfy_api_key');
+        const authOverlay = document.getElementById('auth-overlay');
+        const apiKeyInput = document.getElementById('api-key-input');
+        const loginBtn = document.getElementById('login-btn');
+        const authError = document.getElementById('auth-error');
+        const logoutBtn = document.getElementById('logout-btn');
+
+        function logout() {
+            localStorage.removeItem('comfy_api_key');
+            apiKey = null;
+            authOverlay.style.display = 'flex';
+            apiKeyInput.value = '';
+            authError.style.display = 'none';
+        }
+
+        if (logoutBtn) logoutBtn.addEventListener('click', logout);
+
+        // Login Logic
+        loginBtn.addEventListener('click', async () => {
+            const key = apiKeyInput.value.trim();
+            if (!key) return;
+
+            try {
+                const res = await fetch('/api/health', { headers: { 'x-api-key': key } });
+                if (res.ok) {
+                    apiKey = key;
+                    localStorage.setItem('comfy_api_key', key);
+                    authOverlay.style.display = 'none';
+                } else {
+                    authError.style.display = 'block';
+                    authError.textContent = 'Invalid Key';
+                }
+            } catch (e) {
+                authError.style.display = 'block';
+                authError.textContent = 'Server Error';
+            }
+        });
+
+        // Check stored key
+        if (apiKey) {
+            fetch('/api/health', { headers: { 'x-api-key': apiKey } })
+                .then(res => {
+                    if (res.ok) authOverlay.style.display = 'none';
+                    else {
+                        logout(); // Force logout
+                    }
+                })
+                .catch(() => {
+                    authError.textContent = 'Network Error';
+                    authError.style.display = 'block';
+                });
+        }
+
+        const imageInput = document.getElementById('imageInput');
+        const preview = document.getElementById('preview');
+        const promptInput = document.getElementById('promptInput');
+        const generateBtn = document.getElementById('generateBtn');
+        const loading = document.getElementById('loading');
+        const result = document.getElementById('result');
+
+        let imageBase64 = null;
+
+        // Handle image selection
+        imageInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                imageBase64 = event.target.result;
+                preview.src = imageBase64;
+                preview.style.display = 'block';
+                updateButton();
+            };
+            reader.readAsDataURL(file);
+        });
+
+        promptInput.addEventListener('input', updateButton);
+
+        function updateButton() {
+            generateBtn.disabled = !imageBase64 || !promptInput.value.trim();
+        }
+
+        // Handle generation
+        generateBtn.addEventListener('click', async () => {
+            const prompt = promptInput.value.trim();
+            if (!imageBase64 || !prompt) return;
+
+            if (!apiKey) {
+                alert('Please login first!');
+                return;
+            }
+
+            generateBtn.disabled = true;
+            loading.style.display = 'block';
+            result.style.display = 'none';
+
+            try {
+                // Step 1: Start the job (returns immediately with jobId)
+                const startResponse = await fetch('/api/generate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-api-key': apiKey
+                    },
+                    body: JSON.stringify({
+                        prompt: prompt,
+                        image: imageBase64
+                    })
+                });
+
+                const startData = await startResponse.json();
+
+                if (!startData.success || !startData.jobId) {
+                    throw new Error(startData.error || 'Failed to start job');
+                }
+
+                const jobId = startData.jobId;
+                console.log('[Frontend] Job started:', jobId);
+
+                // Step 2: Poll for completion
+                const pollInterval = 3000; // 3 seconds
+                const maxPollTime = 10 * 60 * 1000; // 10 minutes max
+                const startTime = Date.now();
+
+                const checkStatus = async () => {
+                    try {
+                        const statusResponse = await fetch(`/api/status/${jobId}`, {
+                            headers: { 'x-api-key': apiKey }
+                        });
+
+                        const statusData = await statusResponse.json();
+                        console.log('[Frontend] Job status:', statusData.status);
+
+                        if (statusData.status === 'completed') {
+                            // Job completed successfully
+                            const images = statusData.result?.images || [];
+
+                            if (images.length > 0) {
+                                result.innerHTML = `
+                                    <h3>✅ Success!</h3>
+                                    <p>Job ID: ${jobId}</p>
+                                    <img class="result-image" src="data:image/png;base64,${images[0]}" alt="Result">
+                                `;
+                                result.style.display = 'block';
+                            } else {
+                                result.innerHTML = `
+                                    <h3>⚠️ Completed but no image</h3>
+                                    <p>Job ID: ${jobId}</p>
+                                    <details>
+                                        <summary>Debug Info</summary>
+                                        <pre>${JSON.stringify(statusData, null, 2)}</pre>
+                                    </details>
+                                `;
+                                result.style.display = 'block';
+                            }
+
+                            loading.style.display = 'none';
+                            generateBtn.disabled = false;
+                            return; // Stop polling
+                        } else if (statusData.status === 'failed') {
+                            throw new Error(statusData.error || 'Job failed');
+                        } else if (statusData.status === 'pending' || statusData.status === 'processing') {
+                            // Still processing, check if timeout
+                            if (Date.now() - startTime > maxPollTime) {
+                                throw new Error('Job timed out');
+                            }
+
+                            // Continue polling
+                            setTimeout(checkStatus, pollInterval);
+                        } else {
+                            // Unknown status, keep polling
+                            if (Date.now() - startTime > maxPollTime) {
+                                throw new Error('Job timed out');
+                            }
+                            setTimeout(checkStatus, pollInterval);
+                        }
+                    } catch (error) {
+                        console.error('[Frontend] Polling error:', error);
+
+                        // If network error, might be because phone was locked - retry
+                        if (Date.now() - startTime < maxPollTime) {
+                            console.log('[Frontend] Network error, retrying in 5 seconds...');
+                            setTimeout(checkStatus, 5000); // Longer interval after error
+                        } else {
+                            result.innerHTML = `<p style="color: red;">❌ Error: ${error.message}</p>`;
+                            result.style.display = 'block';
+                            loading.style.display = 'none';
+                            generateBtn.disabled = false;
+                        }
+                    }
+                };
+
+                // Start polling
+                setTimeout(checkStatus, pollInterval);
+
+            } catch (error) {
+                result.innerHTML = `<p style="color: red;">❌ Error: ${error.message}</p>`;
+                result.style.display = 'block';
+                loading.style.display = 'none';
+                generateBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+
+</html>
