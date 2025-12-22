@@ -67,7 +67,71 @@ AI-powered image editing service using **Qwen-based workflows** on RunPod and **
 *Default Port: 3000 (Set `PORT` to change)*
 
 ## 🏗️ Architecture
-`User` → `Web UI` → `Express API` → `RunPod Serverless` (ComfyUI)
+
+```mermaid
+graph TD
+    subgraph Client
+        UI[Web UI / Browser]
+        Ed[Image Editor]
+    end
+
+    subgraph Server_Layer
+        API[Express Server]
+        Auth[Auth Middleware]
+        Job[Job Manager]
+    end
+
+    subgraph AI_Services
+        Gemini[Google Gemini API]
+        RunPod[RunPod Serverless GPU]
+    end
+
+    UI --> |/api/generate| API
+    UI --> |/api/chat| API
+    
+    API --> Auth
+    Auth --> Job
+    
+    Job --> |Enhance Prompt| Gemini
+    Job --> |Generate/Edit| RunPod
+    
+    RunPod --> |Images| Job
+    Gemini --> |Text| Job
+    
+    Job --> |JSON Response| UI
+```
+
+### 🔄 Workflow: Image Editing
+```mermaid
+sequenceDiagram
+    participant User
+    participant WebUI
+    participant Server
+    participant Gemini as Gemini AI
+    participant RunPod as ComfyUI (RunPod)
+
+    User->>WebUI: Enters Prompt & Uploads Image
+    WebUI->>Server: POST /api/generate (edit)
+    
+    par Prompt Enhancement
+        Server->>Gemini: Enhance Prompt
+        Gemini-->>Server: Optimized Prompt
+    end
+    
+    Server->>RunPod: Submit Job (Image + Prompt)
+    RunPod-->>Server: Job ID
+    Server-->>WebUI: Job ID (Pending)
+    
+    loop Polling
+        WebUI->>Server: GET /api/status/:id
+        Server->>RunPod: Check Status
+        RunPod-->>Server: Status / Result
+        Server-->>WebUI: Status update
+    end
+    
+    RunPod-->>Server: Final Image
+    Server-->>WebUI: Display Result
+```
 
 ## 📝 License
 MIT
