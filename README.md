@@ -11,6 +11,7 @@ AI-powered image editing service using **Qwen-based workflows** on RunPod and **
 | **[Studio Dashboard](public/index.html)** | Classic chat & generate interface with Gemini integration. | ✅ Stable |
 
 ## 📸 Screenshots
+<img width="829" height="483" alt="sc2" src="https://github.com/user-attachments/assets/30d73eb8-ea69-491c-8278-97adea44bbbe" />
 <img width="1143" height="567" alt="1sc" src="https://github.com/user-attachments/assets/2d2ea3ae-5302-4a2b-bc20-8f0fbfe4fc35" />
 <img width="1389" height="499" alt="3sc" src="https://github.com/user-attachments/assets/4e001f3a-1803-40d0-adff-e71e1875abfe" />
 
