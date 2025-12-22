@@ -1,4 +1,4 @@
-# ComfyUI Image Editing + Gemini - Cloud serverless GPU
+# ComfyUI Image Editing + Gemini - WebUI - Cloud serverless GPU/VPS
 
 AI-powered image editing service using **Qwen-based workflows** on RunPod and **Google Gemini** for prompt enhancement.
 
